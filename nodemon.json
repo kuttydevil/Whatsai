@@ -1,0 +1,12 @@
+{
+  "watch": ["*.js", "views/", ".env"],
+  "ext": "js,ejs,json,env",
+  "ignore": [
+    "node_modules/",
+    "uploads/",
+    "data/",
+    "chrome_user_data_puppeteer/",
+    "*.log"
+  ],
+  "delay": "1500"
+}
