@@ -1,0 +1,108 @@
+// Gemini API Client (Proxy Version)
+// This module handles communication with the Gemini API through a secure proxy server
+
+import axios from 'axios';
+
+export class GeminiApiProxyClient {
+  constructor() {
+    // The proxy server URL should be configured based on your deployment
+    this.proxyUrl = 'http://localhost:3000/api/gemini';
+    this.model = 'gemini-1.5-flash'; // Default model
+  }
+  
+  // Test the API connection through the proxy
+  async testConnection() {
+    try {
+      // Make a simple request to test the proxy server
+      const response = await axios.get(
+        `${this.proxyUrl.replace('/gemini', '')}/health`
+      );
+      
+      if (response.status !== 200) {
+        throw new Error(`Proxy server returned status ${response.status}`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Gemini API proxy test connection error:', error);
+      throw new Error(`Failed to connect to proxy server: ${error.message}`);
+    }
+  }
+  
+  // Generate a response using the Gemini API through the proxy
+  async generateResponse(message, history = []) {
+    try {
+      // Prepare the conversation history in the format expected by Gemini API
+      const formattedHistory = history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      }));
+      
+      // Add the system prompt for the assistant persona
+      const systemPrompt = `You are Alex, a helpful assistant representing Flowtiva. You help users with their questions about automation and AI solutions. Keep your responses concise and friendly.`;
+      
+      // Prepare the request payload
+      const payload = {
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: systemPrompt }]
+          },
+          ...formattedHistory,
+          {
+            role: 'user',
+            parts: [{ text: message }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        },
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          }
+        ]
+      };
+      
+      // Make the API request through the proxy
+      const response = await axios.post(
+        `${this.proxyUrl}/generate`,
+        {
+          model: this.model,
+          payload: payload
+        }
+      );
+      
+      // Extract and return the generated text
+      if (response.data && 
+          response.data.candidates && 
+          response.data.candidates[0] && 
+          response.data.candidates[0].content && 
+          response.data.candidates[0].content.parts && 
+          response.data.candidates[0].content.parts[0]) {
+        return response.data.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error('Unexpected response format from Gemini API');
+      }
+    } catch (error) {
+      console.error('Gemini API proxy generate response error:', error);
+      throw new Error(`Failed to generate response: ${error.message}`);
+    }
+  }
+}

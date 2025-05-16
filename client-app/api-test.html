@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini API Integration Test</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding: 2rem;
+    }
+    .result-container {
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+      background-color: #f8f9fa;
+    }
+    .success {
+      color: #198754;
+    }
+    .error {
+      color: #dc3545;
+    }
+    pre {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #212529;
+      color: #f8f9fa;
+      border-radius: 0.25rem;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gemini API Integration Test</h1>
+    <p class="lead">This page tests the integration with the Gemini API.</p>
+    
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Direct API Integration</h5>
+      </div>
+      <div class="card-body">
+        <p>This test will directly call the Gemini API using your API key.</p>
+        <div class="mb-3">
+          <label for="apiKey" class="form-label">Gemini API Key</label>
+          <input type="password" class="form-control" id="apiKey" placeholder="Enter your Gemini API key">
+          <div class="form-text">Your API key is only stored in memory and is never saved.</div>
+        </div>
+        <div class="mb-3">
+          <label for="testMessage" class="form-label">Test Message</label>
+          <input type="text" class="form-control" id="testMessage" value="Hello, can you help me with WhatsApp automation?">
+        </div>
+        <button id="runDirectTest" class="btn btn-primary">Run Direct API Test</button>
+      </div>
+    </div>
+    
+    <div id="resultContainer" class="result-container d-none">
+      <h3>Test Results</h3>
+      <div id="resultStatus"></div>
+      <pre id="resultDetails"></pre>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { GeminiApiClient } from './src/gemini-api.js';
+    import { SecureKeyManager } from './src/secure-key-manager.js';
+    
+    // DOM elements
+    const apiKeyInput = document.getElementById('apiKey');
+    const testMessageInput = document.getElementById('testMessage');
+    const runDirectTestButton = document.getElementById('runDirectTest');
+    const resultContainer = document.getElementById('resultContainer');
+    const resultStatus = document.getElementById('resultStatus');
+    const resultDetails = document.getElementById('resultDetails');
+    
+    // Add event listener for the direct test button
+    runDirectTestButton.addEventListener('click', async () => {
+      const apiKey = apiKeyInput.value.trim();
+      const testMessage = testMessageInput.value.trim();
+      
+      if (!apiKey) {
+        alert('Please enter a Gemini API key');
+        return;
+      }
+      
+      if (!testMessage) {
+        alert('Please enter a test message');
+        return;
+      }
+      
+      // Disable the button and show loading state
+      runDirectTestButton.disabled = true;
+      runDirectTestButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Testing...';
+      
+      try {
+        // Initialize the key manager and API client
+        const keyManager = new SecureKeyManager();
+        keyManager.setApiKey(apiKey);
+        
+        const apiClient = new GeminiApiClient(keyManager);
+        
+        // Test the connection
+        console.log('Testing API connection...');
+        await apiClient.testConnection();
+        console.log('API connection successful!');
+        
+        // Generate a test response
+        console.log('Generating test response...');
+        const response = await apiClient.generateResponse(testMessage);
+        
+        // Show the result
+        resultContainer.classList.remove('d-none');
+        resultStatus.innerHTML = '<div class="alert alert-success">API test successful!</div>';
+        resultDetails.textContent = JSON.stringify({
+          success: true,
+          message: 'API integration test successful',
+          response
+        }, null, 2);
+        
+        // Clear the API key for security
+        apiKeyInput.value = '';
+        keyManager.clearApiKey();
+      } catch (error) {
+        console.error('API test failed:', error);
+        
+        // Show the error
+        resultContainer.classList.remove('d-none');
+        resultStatus.innerHTML = '<div class="alert alert-danger">API test failed!</div>';
+        resultDetails.textContent = JSON.stringify({
+          success: false,
+          message: `API test failed: ${error.message}`,
+          error: {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          }
+        }, null, 2);
+      } finally {
+        // Re-enable the button
+        runDirectTestButton.disabled = false;
+        runDirectTestButton.textContent = 'Run Direct API Test';
+      }
+    });
+  </script>
+</body>
+</html>
